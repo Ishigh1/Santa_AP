@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <RootNamespace>Santa_needs_YOU</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Archipelago.Gifting.Net" Version="0.2.5" />
+      <PackageReference Include="Archipelago.MultiClient.Net" Version="5.0.6" />
+    </ItemGroup>
+
+</Project>
