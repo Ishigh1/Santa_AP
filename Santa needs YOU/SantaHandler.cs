@@ -4,6 +4,7 @@ using Archipelago.Gifting.Net.Service;
 using Archipelago.Gifting.Net.Service.TraitAcceptance;
 using Archipelago.Gifting.Net.Traits;
 using Archipelago.MultiClient.Net;
+using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Helpers;
 using Archipelago.MultiClient.Net.MessageLog.Messages;
 using Archipelago.MultiClient.Net.Packets;
@@ -167,6 +168,14 @@ public class SantaHandler
 			trait = "Nothing";
 			Satisfiedchildren += 1;
 			Session.Locations.CompleteLocationChecks(4573924180576428 + id);
+			if (Satisfiedchildren == NumChildren)
+			{
+				StatusUpdatePacket statusUpdatePacket = new()
+				{
+					Status = ArchipelagoClientState.ClientGoal
+				};
+				Session.Socket.SendPacket(statusUpdatePacket);
+			}
 		}
 		else
 			trait = acceptedTraits.ElementAt(Random.Shared.Next(acceptedTraits.Count));
@@ -207,6 +216,14 @@ public class SantaHandler
 					anyGood = true;
 					Satisfiedchildren += 1;
 					Session.Locations.CompleteLocationChecks(4573924180576428 + foundKey);
+					if (Satisfiedchildren == NumChildren)
+					{
+						StatusUpdatePacket statusUpdatePacket = new()
+						{
+							Status = ArchipelagoClientState.ClientGoal
+						};
+						Session.Socket.SendPacket(statusUpdatePacket);
+					}
 					Whishlist[foundKey].Trait = "Nothing";
 				}
 			}
