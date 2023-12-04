@@ -67,39 +67,47 @@ public class SantaHandler
 
 	private void OnItemReceived(ReceivedItemsHelper helper)
 	{
-		foreach ((int _, AcceptedTraits? acceptedTraits) in GiftingService.GetAcceptedTraitsByPlayer(
-			         Session.ConnectionInfo.Team,
-			         new[]
-			         {
-				         "Armor", "Flower", "Speed", "Monster", "Drink", "Fiber", "Egg", "Food", "Fruit", "Heal",
-				         "Vegetable", "Consumable", "Resource", "Mana", "Fish", "Meat", "Cure"
-			         }))
+		new Task(() =>
 		{
-			if (acceptedTraits.Player != Session.ConnectionInfo.Slot)
+			foreach ((int _, AcceptedTraits? acceptedTraits) in GiftingService.GetAcceptedTraitsByPlayer(
+				         Session.ConnectionInfo.Team,
+				         new[]
+				         {
+					         "Armor", "Flower", "Speed", "Monster", "Drink", "Fiber", "Egg", "Food", "Fruit", "Heal",
+					         "Vegetable", "Consumable", "Resource", "Mana", "Fish", "Meat", "Cure"
+				         }))
 			{
-				int traitsLength = acceptedTraits.Traits.Length;
-				if (traitsLength > 0)
+				if (acceptedTraits.Player != Session.ConnectionInfo.Slot)
 				{
-					string mainTrait = acceptedTraits.Traits[Random.Shared.Next(traitsLength)];
-					double duration = Random.Shared.NextDouble() * 1.5 + 0.5;
-					double quality = Random.Shared.NextDouble() * 1.5 + 0.5;
-					GiftTrait[] traits = { new(mainTrait, duration, quality) };
-					foreach (string? trait in acceptedTraits.Traits)
+					int traitsLength = acceptedTraits.Traits.Length;
+					if (traitsLength > 0)
 					{
-						if (trait != mainTrait && Random.Shared.NextDouble() < 0.3)
+						string mainTrait = acceptedTraits.Traits[Random.Shared.Next(traitsLength)];
+						double duration = Random.Shared.NextDouble() * 1.5 + 0.5;
+						double quality = Random.Shared.NextDouble() * 1.5 + 0.5;
+						List<GiftTrait> traits = new()
 						{
-							duration = Random.Shared.NextDouble() * 1 + 0.25;
-							quality = Random.Shared.NextDouble() * 1 + 0.25;
-							traits[traits.Length] = new GiftTrait(trait, duration, quality);
+							new GiftTrait(mainTrait, duration, quality)
+						};
+						foreach (string? trait in acceptedTraits.Traits)
+						{
+							if (trait != mainTrait && Random.Shared.NextDouble() <
+							    1 / (2f * (acceptedTraits.Traits.Length - 1)))
+							{
+								duration = Random.Shared.NextDouble() * 1 + 0.25;
+								quality = Random.Shared.NextDouble() * 1 + 0.25;
+								traits.Add(new GiftTrait(trait, duration, quality));
+							}
 						}
-					}
 
-					GiftItem gift = new("Love", Random.Shared.Next(10),
-						Random.Shared.NextInt64(1000000000L, 100000000000));
-					GiftingService.SendGift(gift, traits, Session.Players.GetPlayerName(acceptedTraits.Player));
+						GiftItem gift = new("Love", Random.Shared.Next(10),
+							Random.Shared.NextInt64(1000000000L, 100000000000));
+						GiftingService.SendGift(gift, traits.ToArray(),
+							Session.Players.GetPlayerName(acceptedTraits.Player));
+					}
 				}
 			}
-		}
+		}).Start();
 	}
 
 	private void CheckMessage(LogMessage message)
@@ -107,45 +115,61 @@ public class SantaHandler
 		if (message is ChatLogMessage chatLogMessage)
 		{
 			string text = chatLogMessage.Message;
-			if (text.StartsWith('¤'))
+			if (text.StartsWith("@santa "))
 			{
 				string[] commands = text.Split(' ');
-				switch (commands[0])
+				switch (commands[1])
 				{
-					case "¤info":
-						SayPacket response = new();
+					case "info":
 						switch (commands.Length)
 						{
-							case 1:
+							case 2:
 								long childrenLeft = NumChildren - Satisfiedchildren;
 								if (childrenLeft == 0)
-									response.Text = "All the gifts have been delivered";
+									SendText("All the gifts have been delivered");
 								else
-									response.Text = $"There are still {childrenLeft} gifts to deliver";
-								break;
-							case 2:
-								int id = Convert.ToInt32(commands[1]);
-								if (id < 0 || id >= NumChildren)
-									response.Text =
-										$"Child {id} isn't on my list, it only goes from 0 to {NumChildren - 1}";
+									SendText($"There are still {childrenLeft} gifts to deliver");
+								return;
+							case 3:
+								if (commands[2] == "all")
+								{
+									for (int id = 0; id < NumChildren; id++)
+									{
+										if (!Whishlist.ContainsKey(id))
+										{
+											GenerateWish(id);
+										}
+										else if (Whishlist[id].Trait == "Nothing")
+										{
+											continue;
+										}
+
+										SendText($"Child {id + 1} would like {Whishlist[id].Trait}");
+									}
+								}
 								else
 								{
-									if (!Whishlist.ContainsKey(id))
+									int id = Convert.ToInt32(commands[2]);
+									if (id < 1 || id > NumChildren)
+										SendText($"Child {id} isn't on my list, it only goes from 1 to {NumChildren}");
+									else
 									{
-										GenerateWish(id);
-									}
+										if (!Whishlist.ContainsKey(id - 1))
+										{
+											GenerateWish(id - 1);
+										}
 
-									response.Text = $"Child {id} would like {Whishlist[id].Trait}";
+										SendText($"Child {id} would like {Whishlist[id - 1].Trait}");
+									}
 								}
-								break;
-							default:
-								response.Text = "Command not recognized";
-								break;
+
+								return;
 						}
 
-						Session.Socket.SendPacket(response);
 						break;
 				}
+
+				SendText("Command not recognized");
 			}
 		}
 	}
@@ -184,6 +208,15 @@ public class SantaHandler
 		Save();
 	}
 
+	private void SendText(string text)
+	{
+		SayPacket message = new()
+		{
+			Text = text
+		};
+		Session.Socket.SendPacket(message);
+	}
+
 	private void CheckAllGifts()
 	{
 		CheckGifts(GiftingService.GetAllGiftsAndEmptyGiftbox());
@@ -191,47 +224,51 @@ public class SantaHandler
 
 	private void CheckGifts(Dictionary<string, Gift> gifts)
 	{
-		if (gifts.Count > 0)
+		new Task(() =>
 		{
-			bool anyGood = false;
-			foreach ((string? _, Gift? gift) in gifts)
+			if (gifts.Count > 0)
 			{
-				int foundKey = -1;
-				foreach ((int key, GiftTrait? wish) in Whishlist)
+				bool anyGood = false;
+				foreach ((string? _, Gift? gift) in gifts)
 				{
-					if (wish.Trait == "Nothing") continue;
-					if (gift.Traits.Any(giftTrait => giftTrait.Trait == wish.Trait))
+					int foundKey = -1;
+					foreach ((int key, GiftTrait? wish) in Whishlist)
 					{
-						foundKey = key;
-						break;
-					}
-				}
-
-				if (foundKey == -1)
-				{
-					GiftingService.RefundGift(gift);
-				}
-				else
-				{
-					anyGood = true;
-					Satisfiedchildren += 1;
-					Session.Locations.CompleteLocationChecks(4573924180576428 + foundKey);
-					if (Satisfiedchildren == NumChildren)
-					{
-						StatusUpdatePacket statusUpdatePacket = new()
+						if (wish.Trait == "Nothing") continue;
+						if (gift.Traits.Any(giftTrait => giftTrait.Trait == wish.Trait))
 						{
-							Status = ArchipelagoClientState.ClientGoal
-						};
-						Session.Socket.SendPacket(statusUpdatePacket);
+							foundKey = key;
+							break;
+						}
 					}
-					Whishlist[foundKey].Trait = "Nothing";
-				}
-			}
-			
-			if (anyGood)
-				Save();
 
-			GiftingService.RemoveGiftsFromGiftBox(gifts.Keys);
-		}
+					if (foundKey == -1)
+					{
+						GiftingService.RefundGift(gift);
+					}
+					else
+					{
+						anyGood = true;
+						Satisfiedchildren += 1;
+						Session.Locations.CompleteLocationChecks(4573924180576428 + foundKey);
+						if (Satisfiedchildren == NumChildren)
+						{
+							StatusUpdatePacket statusUpdatePacket = new()
+							{
+								Status = ArchipelagoClientState.ClientGoal
+							};
+							Session.Socket.SendPacket(statusUpdatePacket);
+						}
+
+						Whishlist[foundKey].Trait = "Nothing";
+					}
+				}
+
+				if (anyGood)
+					Save();
+
+				GiftingService.RemoveGiftsFromGiftBox(gifts.Keys);
+			}
+		}).Start();
 	}
 }

@@ -26,6 +26,7 @@ session.TryConnectAndLogin("Santa", username, ItemsHandlingFlags.AllItems);
 
 new SantaHandler(session);
 
+Console.WriteLine("Connected");
 
 loop:
 

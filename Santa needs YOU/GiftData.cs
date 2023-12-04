@@ -12,7 +12,6 @@ public static class GiftData
 				"Speed",
 				"Drink",
 				"Material",
-				"Trap",
 				"Egg",
 				"Food",
 				"Fruit",
@@ -39,19 +38,15 @@ public static class GiftData
 			{
 				"Stone",
 				"Grass",
-				"Monster",
 				"Fiber",
 				"Material",
 				"Ore",
-				"Trap",
 				"Wood",
 				"Resource",
-				"Animal",
 				"Boulder",
 				"Lumber",
 				"Rock",
 				"Vine",
-				"Zombie",
 				"Tree"
 			}
 		},
