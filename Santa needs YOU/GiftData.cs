@@ -27,10 +27,8 @@ public static class GiftData
 				"Fish",
 				"Cooking",
 				"Artifact",
-				"asdf",
 				"Crafting",
-				"Gem",
-				"Quest"
+				"Gem"
 			}
 		},
 		{
