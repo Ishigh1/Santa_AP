@@ -32,7 +32,7 @@ public static class GiftData
 			}
 		},
 		{
-			"DLC Quest", new[]
+			"DLCQuest", new[]
 			{
 				"Stone",
 				"Grass",
